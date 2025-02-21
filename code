@@ -1,0 +1,48 @@
+function[z,obj,Error_out,Omega_out,MSE_out] = CKCGMethod(y,Delta,eta,data_train,epsilon,max_iter)
+%--original----------------------------
+k = 1;
+z = data_train(k,:)';
+Omega = zeros(size(z));
+d = y(k)*0.01; 
+Error = d - Omega'*z;
+s = Error^2 / 2*(Delta^2);
+Zeta = exp(-s) / (Delta^2)*(eta^(-1)+s*exp(-s));
+C = Zeta* z *z'; 
+c = Zeta*d*z;
+Residual = c - C*Omega;
+search_Direction = Residual; 
+Lambda = 0.999;
+sr_new = search_Direction'*Residual; 
+ss_new = Residual'*Residual;
+ss0 = ss_new;
+obj = 0.5*Omega'*C*Omega - c'*Omega; 
+Error_out = Error;
+Omega_out = Omega;
+MSE_out = 10*log10((d - z'*Omega).^2);
+%----------------------------------------
+while(k<max_iter)&&(ss_new/ss0>epsilon^2)
+k = k+1;
+d = y(k);
+z = data_train(k,:)';
+Error = d - Omega'*z;
+Error_out = [Error_out,Error];
+s = Error^2 / 2*(Delta^2);
+Zeta = exp(-s) /((Delta^2)*(eta^(-1)+s*exp(-s)));
+C = Lambda*C + Zeta*(z*z');
+c = Zeta*d*z;
+q = C*search_Direction;
+alpha = sr_new/(search_Direction'*q); %计算系数 alpha
+Omega = Omega + alpha*search_Direction; %迭代一步（向下走一步）
+Omega_out = [Omega_out,Omega];
+d_pred = z' * Omega;
+mse =10*log10((d - d_pred).^2);
+MSE_out = [MSE_out,mse];
+obj = [obj,0.5*Omega'*C*Omega - c'*Omega];
+Residual_old = Residual;
+Residual = Lambda*Residual_old - alpha*C*search_Direction + Zeta*z*Error; % 更新计算残差
+ss_old = ss_new;
+ss_new = Residual'*Residual; %更新残差的内积
+beta = (ss_new - Residual'*Residual_old)/ss_old; %更新下一步方向的系数
+search_Direction = Residual + beta*search_Direction;
+end
+end
